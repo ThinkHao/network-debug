@@ -34,7 +34,7 @@ jobs:
           pkg-config
 
     - name: Build
-      run: make build
+      run: make build-in-docker
       env:
         BPF_CLANG: clang
         BPF_CFLAGS: "-target bpf -D__TARGET_ARCH_x86 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/src/linux-headers-$(uname -r)/include -I/usr/src/linux-headers-$(uname -r)/arch/x86/include -I/usr/src/linux-headers-$(uname -r)/include/uapi -I/usr/src/linux-headers-$(uname -r)/arch/x86/include/generated/uapi -I/usr/src/linux-headers-$(uname -r)/include/generated/uapi"
@@ -44,5 +44,5 @@ jobs:
       with:
         name: net-tracer
         path: |
-          bin/net-tracer
-          bin/*.o
+          build/net-tracer
+          *.o
