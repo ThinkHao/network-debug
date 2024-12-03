@@ -9,6 +9,10 @@ RUN curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Ce
 RUN yum install -y epel-release && \
     curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-7.repo
 
+# 安装SCL源并启用LLVM工具集
+RUN yum install -y centos-release-scl && \
+    yum install -y llvm-toolset-7
+
 # 安装必要的构建工具和依赖
 RUN yum groupinstall -y "Development Tools" && \
     yum install -y \
@@ -33,6 +37,11 @@ RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
 ENV PATH="/usr/local/go/bin:${PATH}"
 ENV GOPATH="/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
+
+# 启用LLVM工具集
+ENV PATH="/opt/rh/llvm-toolset-7/root/usr/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:${LD_LIBRARY_PATH}"
+ENV MANPATH="/opt/rh/llvm-toolset-7/root/usr/share/man:${MANPATH}"
 
 # 设置工作目录
 WORKDIR /workspace
