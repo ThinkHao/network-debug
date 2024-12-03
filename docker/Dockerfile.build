@@ -27,8 +27,11 @@ RUN yum groupinstall -y "Development Tools" && \
     pkg-config \
     && yum clean all
 
-# 创建llvm-strip的软链接
-RUN ln -sf /usr/bin/llvm-strip-* /usr/bin/llvm-strip
+# 配置LLVM工具
+RUN mkdir -p /usr/lib/llvm/bin && \
+    for f in /usr/bin/llvm-*; do ln -sf "$f" "/usr/lib/llvm/bin/$(basename $f)"; done && \
+    ln -sf /usr/bin/clang /usr/lib/llvm/bin/clang && \
+    ln -sf $(ls /usr/bin/llvm-strip-* | head -n 1) /usr/bin/llvm-strip
 
 # 安装 Go
 RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
@@ -36,7 +39,7 @@ RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
     rm go1.22.0.linux-amd64.tar.gz
 
 # 设置环境变量
-ENV PATH="/usr/local/go/bin:${PATH}"
+ENV PATH="/usr/lib/llvm/bin:/usr/local/go/bin:${PATH}"
 ENV GOPATH="/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
