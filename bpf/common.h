@@ -1,6 +1,11 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include <stddef.h>
+#include <linux/types.h>
+#include <linux/bpf.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
 #include <stdint.h>
 
 /* Event types */
