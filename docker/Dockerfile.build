@@ -1,15 +1,16 @@
 FROM openanolis/anolisos:7.9-x86_64
 
-# 配置Anolis源
+# 配置基础源和EPEL源
 RUN yum install -y wget && \
-    wget -O /etc/yum.repos.d/AliCloud.repo http://mirrors.aliyun.com/repo/Centos-7.repo && \
-    sed -i -e '/mirrors.cloud.aliyuncs.com/d' -e '/mirrors.aliyuncs.com/d' /etc/yum.repos.d/AliCloud.repo && \
+    wget -O /etc/yum.repos.d/CentOS-Base.repo https://mirrors.tuna.tsinghua.edu.cn/repo/centos7_base.repo && \
+    wget -O /etc/yum.repos.d/epel.repo https://mirrors.tuna.tsinghua.edu.cn/repo/epel-7.repo && \
     yum clean all && \
     yum makecache
 
-# 安装EPEL源和SCL源
-RUN yum install -y epel-release centos-release-scl && \
-    wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+# 安装SCL源
+RUN yum install -y centos-release-scl && \
+    sed -i 's|#baseurl=http://mirror.centos.org/centos|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo && \
+    sed -i 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
 # 安装必要的构建工具和依赖
 RUN yum groupinstall -y "Development Tools" && \
