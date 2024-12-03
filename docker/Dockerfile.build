@@ -5,8 +5,8 @@ RUN curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Ce
     yum clean all && \
     yum makecache
 
-# 安装EPEL源
-RUN yum install -y epel-release && \
+# 安装EPEL源和SCL源
+RUN yum install -y epel-release centos-release-scl && \
     curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-7.repo
 
 # 安装必要的构建工具和依赖
@@ -15,11 +15,10 @@ RUN yum groupinstall -y "Development Tools" && \
     wget \
     which \
     git \
-    llvm \
-    llvm-devel \
-    llvm-static \
-    clang \
-    clang-devel \
+    llvm-toolset-7 \
+    llvm-toolset-7-llvm-devel \
+    llvm-toolset-7-llvm-static \
+    devtoolset-7-llvm \
     make \
     gcc \
     glibc-devel \
@@ -28,16 +27,14 @@ RUN yum groupinstall -y "Development Tools" && \
     pkg-config \
     && yum clean all
 
-# 确保LLVM工具在正确的位置
-RUN for tool in llvm-strip clang; do \
-        if [ -f "/usr/bin/$tool" ]; then \
-            echo "$tool already exists in /usr/bin"; \
-        elif [ -f "/usr/lib64/llvm/$tool" ]; then \
-            ln -sf "/usr/lib64/llvm/$tool" "/usr/bin/$tool"; \
-        fi; \
-    done && \
-    which clang && \
-    which llvm-strip
+# 启用LLVM工具集
+SHELL [ "/bin/bash", "-c" ]
+RUN source /opt/rh/llvm-toolset-7/enable && \
+    source /opt/rh/devtoolset-7/enable && \
+    echo "source /opt/rh/llvm-toolset-7/enable" >> /etc/bashrc && \
+    echo "source /opt/rh/devtoolset-7/enable" >> /etc/bashrc && \
+    ln -sf /opt/rh/llvm-toolset-7/root/usr/bin/llvm-strip /usr/bin/llvm-strip && \
+    ln -sf /opt/rh/llvm-toolset-7/root/usr/bin/clang /usr/bin/clang
 
 # 安装 Go
 RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
@@ -45,7 +42,7 @@ RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
     rm go1.22.0.linux-amd64.tar.gz
 
 # 设置环境变量
-ENV PATH="/usr/lib64/llvm:/usr/bin:/usr/local/go/bin:${PATH}"
+ENV PATH="/opt/rh/llvm-toolset-7/root/usr/bin:/opt/rh/devtoolset-7/root/usr/bin:/usr/bin:/usr/local/go/bin:${PATH}"
 ENV GOPATH="/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
