@@ -2,14 +2,17 @@ FROM openanolis/anolisos:7.9-x86_64
 
 # 配置基础源和EPEL源
 RUN yum install -y wget && \
-    wget -O /etc/yum.repos.d/CentOS-Base.repo https://mirrors.tuna.tsinghua.edu.cn/repo/centos7_base.repo && \
-    wget -O /etc/yum.repos.d/epel.repo https://mirrors.tuna.tsinghua.edu.cn/repo/epel-7.repo && \
+    wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.163.com/.help/CentOS7-Base-163.repo && \
+    sed -i 's/$releasever/7/g' /etc/yum.repos.d/CentOS-Base.repo && \
+    yum install -y epel-release && \
+    sed -i 's|^#baseurl=http://download.fedoraproject.org/pub|baseurl=http://mirrors.163.com|g' /etc/yum.repos.d/epel.repo && \
+    sed -i 's|^mirrorlist|#mirrorlist|g' /etc/yum.repos.d/epel.repo && \
     yum clean all && \
     yum makecache
 
 # 安装SCL源
 RUN yum install -y centos-release-scl && \
-    sed -i 's|#baseurl=http://mirror.centos.org/centos|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo && \
+    sed -i 's|#baseurl=http://mirror.centos.org/centos|baseurl=http://mirrors.163.com/centos|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo && \
     sed -i 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
 # 安装必要的构建工具和依赖
