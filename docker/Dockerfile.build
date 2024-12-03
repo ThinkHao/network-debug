@@ -3,9 +3,14 @@ FROM debian:bullseye
 # 避免交互式提示
 ENV DEBIAN_FRONTEND=noninteractive
 
+# 添加必要的源
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 # 安装必要的构建工具和依赖
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
     wget \
     git \
     llvm \

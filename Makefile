@@ -21,7 +21,7 @@ CENTOS_TARGET := linux/amd64
 
 # 确保使用静态链接和较老的 GLIBC 特性级别
 LDFLAGS := -ldflags="-s -w -extldflags '-static'"
-GOFLAGS := CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOAMD64=v1
+GOFLAGS := CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOAMD64=v1
 
 .PHONY: all
 all: docker-build
@@ -46,7 +46,7 @@ build-in-docker: generate
 
 .PHONY: generate
 generate: export BPF_CLANG := $(CLANG)
-generate: export BPF_CFLAGS := $(CFLAGS)
+generate: export BPF_CFLAGS := -O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm -I/usr/include/clang-include
 generate:
 	$(GOCMD) generate ./...
 
