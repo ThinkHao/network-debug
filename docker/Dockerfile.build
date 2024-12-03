@@ -11,6 +11,10 @@ RUN yum install -y epel-release && \
 
 # 安装SCL源并启用LLVM工具集
 RUN yum install -y centos-release-scl && \
+    sed -i 's|mirror.centos.org/centos|vault.centos.org|g' /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
+    sed -i 's|mirror.centos.org/centos|vault.centos.org|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo && \
+    yum clean all && \
+    yum makecache && \
     yum install -y llvm-toolset-7
 
 # 安装必要的构建工具和依赖
