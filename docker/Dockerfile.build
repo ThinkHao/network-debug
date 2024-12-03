@@ -17,6 +17,7 @@ RUN yum groupinstall -y "Development Tools" && \
     llvm \
     llvm-devel \
     llvm-static \
+    llvm-toolset \
     clang \
     clang-devel \
     make \
@@ -25,13 +26,26 @@ RUN yum groupinstall -y "Development Tools" && \
     kernel-devel \
     elfutils-libelf-devel \
     pkg-config \
-    && yum clean all
+    && yum clean all \
+    && yum list llvm* --showduplicates \
+    && which llvm-strip || echo "llvm-strip not found" \
+    && find / -name "llvm-strip*" 2>/dev/null
+
+# 确保llvm-strip可用
+RUN if [ ! -f /usr/bin/llvm-strip ]; then \
+        STRIP_PATH=$(find / -name "llvm-strip*" 2>/dev/null | head -n 1); \
+        if [ ! -z "$STRIP_PATH" ]; then \
+            ln -sf "$STRIP_PATH" /usr/bin/llvm-strip; \
+        else \
+            echo "Error: Could not find llvm-strip binary"; \
+            exit 1; \
+        fi; \
+    fi
 
 # 配置LLVM工具
 RUN mkdir -p /usr/lib/llvm/bin && \
     for f in /usr/bin/llvm-*; do ln -sf "$f" "/usr/lib/llvm/bin/$(basename $f)"; done && \
-    ln -sf /usr/bin/clang /usr/lib/llvm/bin/clang && \
-    ln -sf $(ls /usr/bin/llvm-strip-* | head -n 1) /usr/bin/llvm-strip
+    ln -sf /usr/bin/clang /usr/lib/llvm/bin/clang
 
 # 安装 Go
 RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
