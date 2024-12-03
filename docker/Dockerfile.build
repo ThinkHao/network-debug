@@ -20,6 +20,7 @@ RUN apt-get update && \
     linux-tools-common \
     build-essential \
     pkg-config \
+    kmod \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Go
@@ -43,6 +44,6 @@ ENV GOAMD64=v1
 
 # 设置 BPF 相关环境变量
 ENV BPF_CLANG=clang
-ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/lib/llvm-14/lib/clang/14.0.0/include"
+ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/src/linux-headers-$(uname -r)/arch/x86/include -I/usr/src/linux-headers-$(uname -r)/arch/x86/include/generated -I/usr/src/linux-headers-$(uname -r)/include"
 
 CMD ["make", "build-in-docker"]
