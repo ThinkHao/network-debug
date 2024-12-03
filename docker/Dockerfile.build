@@ -11,11 +11,11 @@ RUN yum install -y epel-release && \
 
 # 安装SCL源并启用LLVM工具集
 RUN yum install -y centos-release-scl && \
-    sed -i 's|mirror.centos.org/centos|vault.centos.org|g' /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
-    sed -i 's|mirror.centos.org/centos|vault.centos.org|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo && \
+    yum-config-manager --disable centos-sclo-rh && \
+    yum-config-manager --add-repo https://mirrors.aliyun.com/centos-vault/7.9.2009/sclo/x86_64/rh/ && \
     yum clean all && \
     yum makecache && \
-    yum install -y llvm-toolset-7
+    yum install -y llvm-toolset-7 --nogpgcheck
 
 # 安装必要的构建工具和依赖
 RUN yum groupinstall -y "Development Tools" && \
