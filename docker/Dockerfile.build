@@ -14,7 +14,7 @@ RUN apt-get update && \
     gcc \
     libc6-dev \
     libbpf-dev \
-    linux-headers-5.15.0-126-generic \
+    linux-headers-generic \
     linux-tools-generic \
     linux-tools-common \
     build-essential \
@@ -35,7 +35,7 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 
 # 设置 BPF 相关环境变量
 ENV BPF_CLANG=clang
-ENV BPF_CFLAGS="-target bpf -D__TARGET_ARCH_x86 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/src/linux-headers-5.15.0-126-generic/include -I/usr/src/linux-headers-5.15.0-126-generic/arch/x86/include -I/usr/src/linux-headers-5.15.0-126-generic/include/uapi -I/usr/src/linux-headers-5.15.0-126-generic/arch/x86/include/generated/uapi -I/usr/src/linux-headers-5.15.0-126-generic/include/generated/uapi"
+ENV BPF_CFLAGS="-O2 -g -Wall -Werror -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I. -I/usr/src/linux-headers-$(uname -r)/include -I/usr/src/linux-headers-$(uname -r)/arch/x86/include -I/usr/src/linux-headers-$(uname -r)/include/uapi -I/usr/src/linux-headers-$(uname -r)/arch/x86/include/generated/uapi -I/usr/src/linux-headers-$(uname -r)/include/generated/uapi"
 
 # 设置工作目录
 WORKDIR /workspace
@@ -47,8 +47,8 @@ ENV GOARCH=amd64
 ENV GOAMD64=v1
 
 # 添加调试信息
-RUN ls -la /usr/src/linux-headers-5.15.0-126-generic/include/uapi/linux || true && \
-    ls -la /usr/src/linux-headers-5.15.0-126-generic/include/generated/uapi/linux || true && \
+RUN ls -la /usr/src/linux-headers-$(uname -r)/include/uapi/linux || true && \
+    ls -la /usr/src/linux-headers-$(uname -r)/include/generated/uapi/linux || true && \
     clang --version
 
 CMD ["make", "build-in-docker"]
