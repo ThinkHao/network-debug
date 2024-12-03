@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM debian:bullseye
 
 # 避免交互式提示
 ENV DEBIAN_FRONTEND=noninteractive
@@ -15,12 +15,13 @@ RUN apt-get update && \
     libc6-dev \
     linux-libc-dev \
     libbpf-dev \
-    linux-headers-$(uname -r) \
+    linux-headers-amd64 \
     linux-headers-generic \
     linux-tools-generic \
     linux-tools-common \
     build-essential \
     pkg-config \
+    musl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Go
@@ -43,10 +44,11 @@ ENV GOARCH=amd64
 ENV GOAMD64=v1
 
 # 创建必要的符号链接
-RUN ln -s /usr/include/asm-generic /usr/include/asm
+RUN ln -sf /usr/include/asm-generic /usr/include/asm && \
+    ln -sf /usr/lib/llvm-11/lib/clang/11.0.1/include /usr/include/clang-include
 
 # 设置 BPF 相关环境变量
 ENV BPF_CLANG=clang
-ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm"
+ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm -I/usr/include/clang-include"
 
 CMD ["make", "build-in-docker"]
