@@ -1,4 +1,4 @@
-FROM openanolis/anolisos:7.9
+FROM registry.cn-hangzhou.aliyuncs.com/alinux/aliyunlinux:7.9
 
 # 配置Anolis源
 RUN sed -e 's|^mirrorlist=|#mirrorlist=|g' \
