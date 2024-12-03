@@ -15,12 +15,12 @@ RUN apt-get update && \
     libc6-dev \
     linux-libc-dev \
     libbpf-dev \
+    linux-headers-$(uname -r) \
     linux-headers-generic \
     linux-tools-generic \
     linux-tools-common \
     build-essential \
     pkg-config \
-    kmod \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Go
@@ -37,13 +37,16 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 WORKDIR /workspace
 
 # 设置 Go 编译环境变量
-ENV CGO_ENABLED=0
+ENV CGO_ENABLED=1
 ENV GOOS=linux
 ENV GOARCH=amd64
 ENV GOAMD64=v1
 
+# 创建必要的符号链接
+RUN ln -s /usr/include/asm-generic /usr/include/asm
+
 # 设置 BPF 相关环境变量
 ENV BPF_CLANG=clang
-ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/src/linux-headers-$(uname -r)/arch/x86/include -I/usr/src/linux-headers-$(uname -r)/arch/x86/include/generated -I/usr/src/linux-headers-$(uname -r)/include"
+ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm"
 
 CMD ["make", "build-in-docker"]
