@@ -19,6 +19,8 @@ RUN apt-get update && \
     linux-tools-common \
     build-essential \
     pkg-config \
+    libc-dev \
+    linux-libc-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Go
