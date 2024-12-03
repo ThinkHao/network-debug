@@ -18,6 +18,7 @@ RUN apt-get update && \
     make \
     gcc \
     libc6-dev \
+    libc6-dev-amd64 \
     linux-libc-dev \
     libbpf-dev \
     linux-headers-amd64 \
@@ -49,10 +50,11 @@ ENV GOAMD64=v1
 RUN ln -sf /usr/include/asm-generic /usr/include/asm && \
     ln -sf /usr/lib/llvm-11/lib/clang/11.0.1/include /usr/include/clang-include && \
     ln -sf /usr/include/x86_64-linux-gnu/bits /usr/include/bits && \
+    ln -sf /usr/include/x86_64-linux-gnu/gnu /usr/include/gnu && \
     ln -sf /usr/include/x86_64-linux-gnu/sys /usr/include/sys
 
 # 设置 BPF 相关环境变量
 ENV BPF_CLANG=clang
-ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm -I/usr/include/clang-include -I/usr/lib/gcc/x86_64-linux-gnu/10/include"
+ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm -I/usr/include/clang-include -I/usr/lib/gcc/x86_64-linux-gnu/10/include -I/usr/include/x86_64-linux-gnu"
 
 CMD ["make", "build-in-docker"]
