@@ -1,31 +1,28 @@
-FROM debian:bullseye
+FROM centos:7
 
-# 避免交互式提示
-ENV DEBIAN_FRONTEND=noninteractive
+# 配置阿里云镜像源
+RUN curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo && \
+    yum clean all && \
+    yum makecache
 
-# 添加必要的源
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+# 安装EPEL源
+RUN yum install -y epel-release && \
+    curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-7.repo
 
 # 安装必要的构建工具和依赖
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN yum groupinstall -y "Development Tools" && \
+    yum install -y \
     wget \
     git \
     llvm \
     clang \
     make \
     gcc \
-    libc6-dev \
-    libc6-dev-amd64 \
-    linux-libc-dev \
-    libbpf-dev \
-    linux-headers-amd64 \
-    build-essential \
+    glibc-devel \
+    kernel-devel \
+    elfutils-libelf-devel \
     pkg-config \
-    musl-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && yum clean all
 
 # 安装 Go
 RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
@@ -47,14 +44,10 @@ ENV GOARCH=amd64
 ENV GOAMD64=v1
 
 # 创建必要的符号链接
-RUN ln -sf /usr/include/asm-generic /usr/include/asm && \
-    ln -sf /usr/lib/llvm-11/lib/clang/11.0.1/include /usr/include/clang-include && \
-    ln -sf /usr/include/x86_64-linux-gnu/bits /usr/include/bits && \
-    ln -sf /usr/include/x86_64-linux-gnu/gnu /usr/include/gnu && \
-    ln -sf /usr/include/x86_64-linux-gnu/sys /usr/include/sys
+RUN ln -sf /usr/include/asm-generic /usr/include/asm
 
 # 设置 BPF 相关环境变量
 ENV BPF_CLANG=clang
-ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm -I/usr/include/clang-include -I/usr/lib/gcc/x86_64-linux-gnu/10/include -I/usr/include/x86_64-linux-gnu"
+ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include -I/usr/include/asm -I/usr/include/clang-include -I/usr/lib/gcc/x86_64-redhat-linux/4.8.5/include"
 
 CMD ["make", "build-in-docker"]
