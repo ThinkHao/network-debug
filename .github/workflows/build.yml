@@ -12,32 +12,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.22.0'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          llvm \
-          clang \
-          make \
-          gcc \
-          libc6-dev \
-          libbpf-dev \
-          linux-headers-generic \
-          linux-tools-generic \
-          linux-tools-common \
-          build-essential \
-          pkg-config
+    - name: Build Docker image
+      run: docker build -t net-tracer-builder -f docker/Dockerfile.build .
 
-    - name: Build
-      run: make build-in-docker
-      env:
-        BPF_CLANG: clang
-        BPF_CFLAGS: "-target bpf -D__TARGET_ARCH_x86 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/src/linux-headers-$(uname -r)/include -I/usr/src/linux-headers-$(uname -r)/arch/x86/include -I/usr/src/linux-headers-$(uname -r)/include/uapi -I/usr/src/linux-headers-$(uname -r)/arch/x86/include/generated/uapi -I/usr/src/linux-headers-$(uname -r)/include/generated/uapi"
+    - name: Build project
+      run: docker run --rm -v ${{ github.workspace }}:/workspace net-tracer-builder make build-in-docker
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
