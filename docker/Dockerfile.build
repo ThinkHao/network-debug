@@ -21,9 +21,6 @@ RUN apt-get update && \
     linux-libc-dev \
     libbpf-dev \
     linux-headers-amd64 \
-    linux-headers-generic \
-    linux-tools-generic \
-    linux-tools-common \
     build-essential \
     pkg-config \
     musl-dev \
