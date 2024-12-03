@@ -1,0 +1,52 @@
+FROM --platform=linux/amd64 ubuntu:22.04
+
+# 避免交互式提示
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装必要的构建工具和依赖
+RUN apt-get update && \
+    apt-get install -y \
+    wget \
+    git \
+    llvm \
+    clang \
+    make \
+    gcc \
+    libc6-dev \
+    libbpf-dev \
+    linux-headers-5.15.0-126-generic \
+    linux-tools-generic \
+    linux-tools-common \
+    build-essential \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 Go
+RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz && \
+    rm go1.22.0.linux-amd64.tar.gz
+
+# 设置环境变量
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/go"
+ENV PATH="${GOPATH}/bin:${PATH}"
+
+# 设置 BPF 相关环境变量
+ENV BPF_CLANG=clang
+ENV BPF_CFLAGS="-target bpf -D__TARGET_ARCH_x86 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/src/linux-headers-5.15.0-126-generic/include -I/usr/src/linux-headers-5.15.0-126-generic/arch/x86/include -I/usr/src/linux-headers-5.15.0-126-generic/include/uapi -I/usr/src/linux-headers-5.15.0-126-generic/arch/x86/include/generated/uapi -I/usr/src/linux-headers-5.15.0-126-generic/include/generated/uapi"
+
+# 设置工作目录
+WORKDIR /workspace
+
+# 设置 Go 编译环境变量
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOARCH=amd64
+ENV GOAMD64=v1
+
+# 添加调试信息
+RUN ls -la /usr/src/linux-headers-5.15.0-126-generic/include/uapi/linux || true && \
+    ls -la /usr/src/linux-headers-5.15.0-126-generic/include/generated/uapi/linux || true && \
+    clang --version
+
+CMD ["make", "build-in-docker"]

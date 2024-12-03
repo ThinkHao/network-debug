@@ -1,0 +1,48 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22.0'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          llvm \
+          clang \
+          make \
+          gcc \
+          libc6-dev \
+          libbpf-dev \
+          linux-headers-generic \
+          linux-tools-generic \
+          linux-tools-common \
+          build-essential \
+          pkg-config
+
+    - name: Build
+      run: make build
+      env:
+        BPF_CLANG: clang
+        BPF_CFLAGS: "-target bpf -D__TARGET_ARCH_x86 -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/src/linux-headers-$(uname -r)/include -I/usr/src/linux-headers-$(uname -r)/arch/x86/include -I/usr/src/linux-headers-$(uname -r)/include/uapi -I/usr/src/linux-headers-$(uname -r)/arch/x86/include/generated/uapi -I/usr/src/linux-headers-$(uname -r)/include/generated/uapi"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: net-tracer
+        path: |
+          bin/net-tracer
+          bin/*.o
