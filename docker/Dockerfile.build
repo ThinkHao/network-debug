@@ -1,4 +1,4 @@
-FROM anolis/anolisos:7.9-x86_64-nydus
+FROM openanolis/anolisos:7.9-x86_64-nydus
 
 # 配置Anolis源
 RUN yum install -y wget && \
