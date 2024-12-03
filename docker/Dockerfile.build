@@ -15,11 +15,11 @@ RUN yum groupinstall -y "Development Tools" && \
     wget \
     which \
     git \
-    llvm11 \
-    llvm11-devel \
-    llvm11-static \
-    clang11 \
-    clang11-devel \
+    llvm \
+    llvm-devel \
+    llvm-static \
+    clang \
+    clang-devel \
     make \
     gcc \
     glibc-devel \
@@ -28,9 +28,16 @@ RUN yum groupinstall -y "Development Tools" && \
     pkg-config \
     && yum clean all
 
-# 配置LLVM工具
-RUN ln -sf /usr/bin/clang-11 /usr/bin/clang && \
-    ln -sf /usr/bin/llvm-strip-11 /usr/bin/llvm-strip
+# 确保LLVM工具在正确的位置
+RUN for tool in llvm-strip clang; do \
+        if [ -f "/usr/bin/$tool" ]; then \
+            echo "$tool already exists in /usr/bin"; \
+        elif [ -f "/usr/lib64/llvm/$tool" ]; then \
+            ln -sf "/usr/lib64/llvm/$tool" "/usr/bin/$tool"; \
+        fi; \
+    done && \
+    which clang && \
+    which llvm-strip
 
 # 安装 Go
 RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
@@ -38,7 +45,7 @@ RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz && \
     rm go1.22.0.linux-amd64.tar.gz
 
 # 设置环境变量
-ENV PATH="/usr/bin:/usr/local/go/bin:${PATH}"
+ENV PATH="/usr/lib64/llvm:/usr/bin:/usr/local/go/bin:${PATH}"
 ENV GOPATH="/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
