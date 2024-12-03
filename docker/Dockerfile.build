@@ -47,10 +47,12 @@ ENV GOAMD64=v1
 
 # 创建必要的符号链接
 RUN ln -sf /usr/include/asm-generic /usr/include/asm && \
-    ln -sf /usr/lib/llvm-11/lib/clang/11.0.1/include /usr/include/clang-include
+    ln -sf /usr/lib/llvm-11/lib/clang/11.0.1/include /usr/include/clang-include && \
+    ln -sf /usr/include/x86_64-linux-gnu/bits /usr/include/bits && \
+    ln -sf /usr/include/x86_64-linux-gnu/sys /usr/include/sys
 
 # 设置 BPF 相关环境变量
 ENV BPF_CLANG=clang
-ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm -I/usr/include/clang-include"
+ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/asm -I/usr/include/clang-include -I/usr/lib/gcc/x86_64-linux-gnu/10/include"
 
 CMD ["make", "build-in-docker"]
