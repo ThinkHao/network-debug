@@ -10,11 +10,12 @@ RUN yum install -y wget && \
     yum makecache
 
 # 配置SCL源
-RUN wget -O /etc/yum.repos.d/CentOS-SCLo-scl.repo https://mirrors.aliyun.com/repo/centos-sclo-scl.repo && \
-    wget -O /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo https://mirrors.aliyun.com/repo/centos-sclo-rh-scl.repo && \
+RUN yum install -y centos-release-scl && \
+    sed -i 's|$basearch|x86_64|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
+    sed -i 's|http://mirror.centos.org|https://mirrors.aliyun.com|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
     yum clean all && \
     yum makecache && \
-    yum install -y centos-release-scl scl-utils
+    yum install -y scl-utils
 
 # 安装必要的构建工具和依赖
 RUN yum groupinstall -y "Development Tools" && \
