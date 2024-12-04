@@ -1,23 +1,25 @@
 FROM openanolis/anolisos:7.9-x86_64
 
-# 安装必要的构建工具和依赖
-RUN yum groupinstall -y "Development Tools" && \
+# 更新包管理器并安装基础工具
+RUN yum update -y && \
+    yum install -y yum-utils && \
+    yum groupinstall -y "Development Tools" && \
     yum install -y \
-    wget \
-    which \
-    git \
-    llvm \
-    llvm-devel \
-    llvm-static \
-    clang \
-    make \
-    gcc \
-    glibc-devel \
-    kernel-devel \
-    elfutils-libelf-devel \
-    pkg-config \
+        wget \
+        which \
+        git \
+        clang \
+        llvm \
+        llvm-devel \
+        llvm-libs \
+        make \
+        gcc \
+        glibc-devel \
+        kernel-devel \
+        elfutils-libelf-devel \
+        pkgconfig \
     && yum clean all \
-    && which clang > /dev/null || (echo "clang not found" && exit 1)
+    && which clang || (echo "clang not found" && exit 1)
 
 # 创建必要的符号链接并验证
 RUN ln -sf /usr/bin/strip /usr/bin/llvm-strip && \
