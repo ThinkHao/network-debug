@@ -16,35 +16,39 @@ RUN yum groupinstall -y "Development Tools" && \
     kernel-devel \
     elfutils-libelf-devel \
     pkg-config \
-    && yum clean all
+    && yum clean all \
+    && which clang > /dev/null || (echo "clang not found" && exit 1)
 
-# 创建必要的符号链接
+# 创建必要的符号链接并验证
 RUN ln -sf /usr/bin/strip /usr/bin/llvm-strip && \
-    ln -sf /usr/bin/clang /usr/local/bin/clang
+    ln -sf $(which clang) /usr/bin/clang && \
+    ls -l /usr/bin/clang && \
+    clang --version
 
 # 设置工作目录
 WORKDIR /workspace
 
-# 设置 Go 编译环境变量
-ENV CGO_ENABLED=1
-ENV GOOS=linux
-ENV GOARCH=amd64
-ENV GOAMD64=v1
-
-# 安装 Go
+# 下载并安装 Go
 RUN wget https://mirrors.aliyun.com/golang/go1.22.0.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz && \
     rm go1.22.0.linux-amd64.tar.gz
 
 # 设置 Go 环境变量
-ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOROOT="/usr/local/go"
+ENV PATH="${GOROOT}/bin:${PATH}"
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+ENV GOARCH=amd64
+ENV GOAMD64=v1
+
+# 设置 Go 工作目录
 ENV GOPATH="/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
-# 设置环境变量
+# 设置编译器环境变量
 ENV PATH="/usr/bin:/usr/local/bin:${PATH}" \
-    CC=clang \
-    BPF_CLANG=clang
+    CC=/usr/bin/clang \
+    BPF_CLANG=/usr/bin/clang
 
 # 设置 BPF 相关环境变量
 ENV BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include -I/usr/include/asm -I/usr/include/clang-include"
