@@ -3,12 +3,14 @@ FROM openanolis/anolisos:7.9-x86_64
 # 更新包管理器并安装基础工具
 RUN yum update -y && \
     yum install -y yum-utils && \
+    yum install -y epel-release && \
     yum groupinstall -y "Development Tools" && \
     yum install -y \
         wget \
         which \
         git \
-        clang \
+        clang-core \
+        clang-devel \
         llvm \
         llvm-devel \
         llvm-libs \
