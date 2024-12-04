@@ -4,14 +4,14 @@ FROM openanolis/anolisos:7.9-x86_64
 RUN yum update -y && \
     yum install -y yum-utils && \
     yum install -y epel-release && \
+    yum install -y centos-release-scl && \
+    yum install -y devtoolset-11-gcc devtoolset-11-gcc-c++ && \
     yum groupinstall -y "Development Tools" && \
     yum install -y \
         wget \
         which \
         git \
         make \
-        gcc \
-        gcc-c++ \
         glibc-devel \
         kernel-devel \
         elfutils-libelf-devel \
@@ -24,6 +24,9 @@ RUN yum update -y && \
         libffi-devel \
         ncurses-devel \
         xz-devel
+
+# 启用 devtoolset-11
+SHELL [ "/usr/bin/scl", "enable", "devtoolset-11" ]
 
 # 编译安装 LLVM/Clang
 ENV LLVM_VERSION=14.0.6
@@ -51,6 +54,9 @@ RUN cd /tmp && \
     ln -sf /usr/bin/clang /usr/bin/clang-14 && \
     ln -sf /usr/bin/llvm-strip /usr/bin/llvm-strip-14 && \
     clang --version
+
+# 重置 SHELL 为默认值
+SHELL ["/bin/sh", "-c"]
 
 # 设置工作目录
 WORKDIR /workspace
