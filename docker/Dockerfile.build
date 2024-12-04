@@ -1,20 +1,21 @@
 FROM openanolis/anolisos:7.9-x86_64
 
 # 配置基础源和EPEL源
-RUN yum install -y wget && \
-    wget -O /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-vault-7.repo && \
-    sed -i 's/$releasever/7/g' /etc/yum.repos.d/CentOS-Base.repo && \
-    yum install -y epel-release && \
-    wget -O /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-7.repo && \
+RUN sed -i 's/enabled=1/enabled=0/g' /etc/yum/pluginconf.d/fastestmirror.conf && \
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=https://mirrors.aliyun.com|g' /etc/yum.repos.d/CentOS-* && \
+    yum clean all && \
+    yum makecache && \
+    yum install -y wget epel-release && \
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/epel* && \
+    sed -i 's|#baseurl=http://download.fedoraproject.org/pub|baseurl=https://mirrors.aliyun.com|g' /etc/yum.repos.d/epel* && \
     yum clean all && \
     yum makecache
 
 # 配置SCL源
 RUN yum install -y centos-release-scl && \
-    yum-config-manager --enable rhel-server-rhscl-7-rpms && \
-    sed -i 's|mirror.centos.org|vault.centos.org|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
-    sed -i 's|#baseurl=http://vault|baseurl=http://vault|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
-    sed -i 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-SCLo-scl.repo /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-SCLo-*.repo && \
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=https://mirrors.aliyun.com|g' /etc/yum.repos.d/CentOS-SCLo-*.repo && \
     yum clean all && \
     yum makecache && \
     yum install -y scl-utils
