@@ -9,19 +9,22 @@ RUN yum update -y && \
         wget \
         which \
         git \
-        clang-core \
-        clang-devel \
-        llvm \
-        llvm-devel \
-        llvm-libs \
         make \
         gcc \
         glibc-devel \
         kernel-devel \
         elfutils-libelf-devel \
-        pkgconfig \
-    && yum clean all \
-    && which clang || (echo "clang not found" && exit 1)
+        pkgconfig
+
+# 安装 LLVM 15
+RUN wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && \
+    ./llvm.sh 15 && \
+    rm -f llvm.sh && \
+    ln -sf /usr/bin/clang-15 /usr/bin/clang && \
+    ln -sf /usr/bin/llc-15 /usr/bin/llc && \
+    ln -sf /usr/bin/llvm-strip-15 /usr/bin/llvm-strip && \
+    clang --version
 
 # 创建必要的符号链接并验证
 RUN set -x && \
@@ -59,13 +62,14 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 ENV PATH="/usr/bin:/usr/local/bin:${PATH}" \
     CC=/usr/bin/clang \
     BPF_CLANG=/usr/bin/clang \
-    BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/bpf -I/usr/include/asm -I/usr/include/clang-include" \
+    BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/bpf -I/usr/include/x86_64-linux-gnu -I/usr/include/asm -I/usr/include/clang-15/include" \
     GOPROXY=https://goproxy.cn,direct
 
 # 安装 bpf 相关头文件
-RUN mkdir -p /usr/include/bpf /usr/include/clang-include && \
+RUN mkdir -p /usr/include/bpf /usr/include/clang-15/include && \
     cp -r /usr/include/linux /usr/include/bpf/ && \
     cp -r /usr/include/asm /usr/include/bpf/ && \
-    cp -r /usr/include/asm-generic /usr/include/bpf/
+    cp -r /usr/include/asm-generic /usr/include/bpf/ && \
+    yum clean all
 
 CMD ["make", "build-in-docker"]
