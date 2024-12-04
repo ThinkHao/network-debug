@@ -18,6 +18,9 @@ RUN yum groupinstall -y "Development Tools" && \
     pkg-config \
     && yum clean all
 
+# 创建 llvm-strip 符号链接
+RUN ln -sf /usr/bin/strip /usr/bin/llvm-strip
+
 # 设置工作目录
 WORKDIR /workspace
 
