@@ -8,6 +8,7 @@ RUN yum groupinstall -y "Development Tools" && \
     git \
     llvm \
     llvm-devel \
+    llvm-static \
     clang \
     make \
     gcc \
