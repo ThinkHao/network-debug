@@ -24,10 +24,16 @@ RUN yum update -y && \
     && which clang || (echo "clang not found" && exit 1)
 
 # 创建必要的符号链接并验证
-RUN ln -sf /usr/bin/strip /usr/bin/llvm-strip && \
-    ln -sf $(which clang) /usr/bin/clang && \
-    ls -l /usr/bin/clang && \
-    clang --version
+RUN set -x && \
+    # Fix permissions
+    chmod +x /usr/bin/clang && \
+    chmod +x /usr/bin/strip && \
+    # Create symlinks
+    ln -sf /usr/bin/strip /usr/bin/llvm-strip && \
+    # Verify installation
+    which clang && \
+    clang --version && \
+    set +x
 
 # 设置工作目录
 WORKDIR /workspace
