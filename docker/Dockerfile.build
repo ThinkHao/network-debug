@@ -3,6 +3,7 @@ FROM openanolis/anolisos:7.9-x86_64
 # 安装必要的构建工具和依赖
 RUN yum groupinstall -y "Development Tools" && \
     yum install -y \
+    wget \
     which \
     git \
     llvm \
