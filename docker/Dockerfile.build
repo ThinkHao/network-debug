@@ -4,8 +4,7 @@ FROM openanolis/anolisos:7.9-x86_64
 RUN yum update -y && \
     yum install -y yum-utils && \
     yum install -y epel-release && \
-    yum install -y centos-release-scl && \
-    yum install -y devtoolset-11-gcc devtoolset-11-gcc-c++ && \
+    yum install -y gcc gcc-c++ && \
     yum groupinstall -y "Development Tools" && \
     yum install -y \
         wget \
@@ -25,8 +24,23 @@ RUN yum update -y && \
         ncurses-devel \
         xz-devel
 
-# 启用 devtoolset-11
-SHELL [ "/usr/bin/scl", "enable", "devtoolset-11" ]
+# 从源码编译安装 GCC 9
+RUN cd /tmp && \
+    wget https://ftp.gnu.org/gnu/gcc/gcc-9.5.0/gcc-9.5.0.tar.gz && \
+    tar xf gcc-9.5.0.tar.gz && \
+    cd gcc-9.5.0 && \
+    ./contrib/download_prerequisites && \
+    mkdir build && cd build && \
+    ../configure --disable-multilib --enable-languages=c,c++ --prefix=/usr/local/gcc-9.5.0 && \
+    make -j$(nproc) && \
+    make install && \
+    cd / && \
+    rm -rf /tmp/gcc-9.5.0* && \
+    ln -sf /usr/local/gcc-9.5.0/bin/gcc /usr/bin/gcc && \
+    ln -sf /usr/local/gcc-9.5.0/bin/g++ /usr/bin/g++ && \
+    echo "/usr/local/gcc-9.5.0/lib64" > /etc/ld.so.conf.d/gcc-9.5.0.conf && \
+    ldconfig && \
+    gcc --version
 
 # 编译安装 LLVM/Clang
 ENV LLVM_VERSION=14.0.6
@@ -54,9 +68,6 @@ RUN cd /tmp && \
     ln -sf /usr/bin/clang /usr/bin/clang-14 && \
     ln -sf /usr/bin/llvm-strip /usr/bin/llvm-strip-14 && \
     clang --version
-
-# 重置 SHELL 为默认值
-SHELL ["/bin/sh", "-c"]
 
 # 设置工作目录
 WORKDIR /workspace
