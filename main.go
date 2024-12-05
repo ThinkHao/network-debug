@@ -16,11 +16,9 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
-	"github.com/cilium/ebpf/bpf2go_bpf2go"
+	"golang.org/x/sys/unix"
 )
 
 // Event types
@@ -314,7 +312,7 @@ func main() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
 	// Load pre-compiled BPF program
-	objs := bpf2go_bpf2go.Objects{}
+	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Printf("Error loading BPF objects: %v", err)
 		return
