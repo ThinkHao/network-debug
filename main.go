@@ -352,19 +352,30 @@ func main() {
 				continue
 			}
 
+			// Convert IPs and ports for logging
+			srcIP := net.IPv4(byte(event.SrcIP), byte(event.SrcIP>>8), byte(event.SrcIP>>16), byte(event.SrcIP>>24))
+			dstIP := net.IPv4(byte(event.DstIP), byte(event.DstIP>>8), byte(event.DstIP>>16), byte(event.DstIP>>24))
+			
+			log.Printf("Received packet: src=%s:%d dst=%s:%d proto=%s", 
+				srcIP.String(), event.SrcPort,
+				dstIP.String(), event.DstPort,
+				parseProtocol(event.Protocol))
+
 			// Apply filters
 			if filter.SrcIP != nil {
-				srcIP := net.IPv4(byte(event.SrcIP), byte(event.SrcIP>>8), byte(event.SrcIP>>16), byte(event.SrcIP>>24))
 				if !filter.SrcIP.Contains(srcIP) {
+					log.Printf("Source IP %s does not match filter %s", srcIP.String(), filter.SrcIP.String())
 					continue
 				}
+				log.Printf("Source IP %s matches filter %s", srcIP.String(), filter.SrcIP.String())
 			}
 
 			if filter.DstIP != nil {
-				dstIP := net.IPv4(byte(event.DstIP), byte(event.DstIP>>8), byte(event.DstIP>>16), byte(event.DstIP>>24))
 				if !filter.DstIP.Contains(dstIP) {
+					log.Printf("Destination IP %s does not match filter %s", dstIP.String(), filter.DstIP.String())
 					continue
 				}
+				log.Printf("Destination IP %s matches filter %s", dstIP.String(), filter.DstIP.String())
 			}
 
 			if len(filter.SrcPorts) > 0 {
@@ -372,10 +383,12 @@ func main() {
 				for _, port := range filter.SrcPorts {
 					if event.SrcPort == port {
 						match = true
+						log.Printf("Source port %d matches filter", event.SrcPort)
 						break
 					}
 				}
 				if !match {
+					log.Printf("Source port %d does not match any filter ports %v", event.SrcPort, filter.SrcPorts)
 					continue
 				}
 			}
@@ -385,10 +398,12 @@ func main() {
 				for _, port := range filter.DstPorts {
 					if event.DstPort == port {
 						match = true
+						log.Printf("Destination port %d matches filter", event.DstPort)
 						break
 					}
 				}
 				if !match {
+					log.Printf("Destination port %d does not match any filter ports %v", event.DstPort, filter.DstPorts)
 					continue
 				}
 			}
@@ -398,32 +413,31 @@ func main() {
 				for _, proto := range filter.Protocols {
 					if event.Protocol == proto {
 						match = true
+						log.Printf("Protocol %s matches filter", parseProtocol(event.Protocol))
 						break
 					}
 				}
 				if !match {
+					log.Printf("Protocol %s does not match any filter protocols %v", 
+						parseProtocol(event.Protocol), 
+						filter.Protocols)
 					continue
 				}
 			}
 
-			if len(filter.Interfaces) > 0 {
-				ifname := string(event.IFName[:bytes.IndexByte(event.IFName[:], 0)])
-				match := false
-				for _, iface := range filter.Interfaces {
-					if ifname == iface {
-						match = true
-						break
-					}
-				}
-				if !match {
-					continue
-				}
-			}
+			// If all filters passed, print the full event details
+			log.Printf("MATCH - Packet details: src=%s:%d dst=%s:%d proto=%s hook=%s verdict=%d mark=%d table=%d chain=%d rule=%d", 
+				srcIP.String(), event.SrcPort,
+				dstIP.String(), event.DstPort,
+				parseProtocol(event.Protocol),
+				parseHook(event.Hook),
+				event.Verdict,
+				event.Mark,
+				event.Table,
+				event.Chain,
+				event.RuleID)
 
 			// Format and log the event
-			srcIP := net.IPv4(byte(event.SrcIP), byte(event.SrcIP>>8), byte(event.SrcIP>>16), byte(event.SrcIP>>24))
-			dstIP := net.IPv4(byte(event.DstIP), byte(event.DstIP>>8), byte(event.DstIP>>16), byte(event.DstIP>>24))
-			
 			switch event.EventType {
 			case EvtNFHook:
 				log.Printf("[NFHook] %s:%d -> %s:%d Proto=%s Hook=%s Verdict=%d",
