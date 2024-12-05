@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"log"
@@ -17,7 +18,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
 	"golang.org/x/sys/unix"
 )
@@ -265,6 +265,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer logFile.Close()
+
+	// Set up logging
+	if *debug {
+		log.Printf("Debug logging enabled")
+	}
 
 	// Print startup message and filter configuration
 	log.Println("Network Debug Tool")
