@@ -71,7 +71,7 @@ ENV CC=/usr/bin/clang \
 # 安装 bpf 相关头文件
 RUN mkdir -p /usr/include/bpf && \
     cp -r /usr/include/linux /usr/include/bpf/ && \
-    cp -r /usr/include/asm /usr/include/bpf/ && \
+    cp -r /usr/include/x86_64-linux-gnu/asm /usr/include/bpf/ && \
     cp -r /usr/include/asm-generic /usr/include/bpf/
 
 # 设置默认的构建命令，确保输出到指定目录
