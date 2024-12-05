@@ -20,10 +20,11 @@ RUN yum update -y && \
         xz-devel \
         kernel-devel \
         elfutils-libelf-devel \
-        glibc-devel
+        glibc-devel \
+        scl-utils
 
 # 启用 devtoolset-11
-SHELL [ "/usr/bin/scl", "enable", "devtoolset-11" ]
+RUN source /opt/rh/devtoolset-11/enable
 
 # 编译安装 LLVM/Clang
 ENV LLVM_VERSION=14.0.6
@@ -93,4 +94,4 @@ RUN mkdir -p /usr/include/bpf && \
     cp -r /usr/include/asm-generic /usr/include/bpf/
 
 # 设置默认的构建命令，确保输出到指定目录
-CMD ["make", "build-in-docker", "OUTPUT_DIR=/workspace/output"]
+CMD ["bash", "-c", "source /opt/rh/devtoolset-11/enable && make build-in-docker OUTPUT_DIR=/workspace/output"]
