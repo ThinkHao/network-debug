@@ -1,62 +1,44 @@
 # 编译环境
-FROM openanolis/anolisos:7.9-x86_64
+FROM ubuntu:20.04
+
+# 避免交互式提示
+ENV DEBIAN_FRONTEND=noninteractive
 
 # 安装基础工具和编译器
-RUN yum update -y && \
-    yum install -y yum-utils epel-release centos-release-scl && \
-    yum install -y \
-        devtoolset-11-gcc \
-        devtoolset-11-gcc-c++ \
+RUN apt-get update && \
+    apt-get install -y \
         wget \
         git \
         make \
-        ninja-build \
-        cmake3 \
+        gcc \
+        g++ \
         python3 \
         python3-pip \
-        zlib-devel \
-        libffi-devel \
-        ncurses-devel \
-        xz-devel \
-        kernel-devel \
-        elfutils-libelf-devel \
-        glibc-devel \
-        scl-utils
-
-# 启用 devtoolset-11
-RUN source /opt/rh/devtoolset-11/enable
-
-# 编译安装 LLVM/Clang
-ENV LLVM_VERSION=14.0.6
-RUN cd /tmp && \
-    wget https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/llvm-project-${LLVM_VERSION}.src.tar.xz && \
-    tar xf llvm-project-${LLVM_VERSION}.src.tar.xz && \
-    mkdir -p llvm-project-${LLVM_VERSION}.src/build && \
-    cd llvm-project-${LLVM_VERSION}.src/build && \
-    cmake3 -G Ninja \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DLLVM_ENABLE_PROJECTS="clang;lld" \
-        -DLLVM_TARGETS_TO_BUILD="BPF;X86" \
-        -DLLVM_INCLUDE_EXAMPLES=OFF \
-        -DLLVM_INCLUDE_TESTS=OFF \
-        -DLLVM_ENABLE_TERMINFO=OFF \
-        -DLLVM_ENABLE_ASSERTIONS=ON \
-        -DLLVM_ENABLE_RTTI=ON \
-        -DLLVM_ENABLE_ZLIB=ON \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/llvm \
-        ../llvm && \
-    ninja -j$(nproc) && \
-    ninja install && \
-    cd / && \
-    rm -rf /tmp/llvm-project-${LLVM_VERSION}.src*
-
-# 创建必要的符号链接
-RUN ln -sf /usr/local/llvm/bin/clang /usr/bin/clang && \
-    ln -sf /usr/local/llvm/bin/llvm-strip /usr/bin/llvm-strip && \
-    ln -sf /usr/local/llvm/bin/clang /usr/bin/clang-14 && \
-    ln -sf /usr/local/llvm/bin/llvm-strip /usr/bin/llvm-strip-14 && \
-    echo "/usr/local/llvm/lib" > /etc/ld.so.conf.d/llvm.conf && \
-    ldconfig
+        xz-utils \
+        linux-headers-generic \
+        zlib1g-dev \
+        libelf-dev \
+        libbpf-dev \
+        curl \
+        gnupg2 \
+        lsb-release \
+        software-properties-common && \
+    # 添加 LLVM 官方源
+    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-14 main" && \
+    apt-get update && \
+    apt-get install -y \
+        clang-14 \
+        lldb-14 \
+        lld-14 \
+        clangd-14 \
+        libclang-14-dev && \
+    # 创建符号链接
+    ln -s /usr/bin/clang-14 /usr/bin/clang && \
+    ln -s /usr/bin/llvm-strip-14 /usr/bin/llvm-strip && \
+    # 清理 apt 缓存
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # 下载并安装 Go
 RUN wget https://mirrors.aliyun.com/golang/go1.22.0.linux-amd64.tar.gz && \
@@ -81,8 +63,7 @@ ENV GOPATH="/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
 # 设置编译器和 BPF 环境变量
-ENV PATH="/usr/local/llvm/bin:${PATH}" \
-    CC=/usr/bin/clang \
+ENV CC=/usr/bin/clang \
     BPF_CLANG=/usr/bin/clang \
     BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/bpf -I/usr/include -I/usr/include/asm -I/usr/include/clang/14/include" \
     GOPROXY=https://goproxy.cn,direct
@@ -94,4 +75,4 @@ RUN mkdir -p /usr/include/bpf && \
     cp -r /usr/include/asm-generic /usr/include/bpf/
 
 # 设置默认的构建命令，确保输出到指定目录
-CMD ["bash", "-c", "source /opt/rh/devtoolset-11/enable && make build-in-docker OUTPUT_DIR=/workspace/output"]
+CMD ["make", "build-in-docker", "OUTPUT_DIR=/workspace/output"]
