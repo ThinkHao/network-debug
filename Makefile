@@ -43,7 +43,7 @@ docker-build: docker-image
 .PHONY: build-in-docker
 build-in-docker: generate
 	mkdir -p $(OUTPUT_DIR)
-	$(GOFLAGS) $(GOBUILD) $(LDFLAGS) -o $(OUTPUT_DIR)/$(TARGET)
+	$(GOFLAGS) $(GOBUILD) -buildvcs=false $(LDFLAGS) -o $(OUTPUT_DIR)/$(TARGET)
 	cp bpf_bpfel.o $(OUTPUT_DIR)/
 	@echo "Build artifacts have been placed in $(OUTPUT_DIR)"
 
