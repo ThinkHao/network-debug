@@ -6,14 +6,21 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/perf"
+	"github.com/cilium/ebpf/bpf2go_bpf2go"
 )
 
 // Event types
@@ -31,6 +38,14 @@ var protocolMap = map[uint8]string{
 	17: "UDP",
 }
 
+// Protocol name to number mapping
+var protocolNameMap = map[string]uint8{
+	"icmp": 1,
+	"tcp":  6,
+	"udp":  17,
+	"all":  0,
+}
+
 // Hook point mappings
 var hookMap = map[uint32]string{
 	0: "PREROUTING",
@@ -38,6 +53,94 @@ var hookMap = map[uint32]string{
 	2: "FORWARD",
 	3: "LOCAL_OUT",
 	4: "POSTROUTING",
+}
+
+// FilterConfig holds all the filter parameters
+type FilterConfig struct {
+	SrcIP      *net.IPNet
+	DstIP      *net.IPNet
+	SrcPorts   []uint16
+	DstPorts   []uint16
+	Protocols  []uint8
+	Interfaces []string
+}
+
+// ParsePortRange parses port range string (e.g., "80" or "1000-2000")
+func ParsePortRange(s string) ([]uint16, error) {
+	if s == "" {
+		return nil, nil
+	}
+
+	parts := strings.Split(s, "-")
+	if len(parts) > 2 {
+		return nil, fmt.Errorf("invalid port range format: %s", s)
+	}
+
+	start, err := strconv.ParseUint(parts[0], 10, 16)
+	if err != nil {
+		return nil, fmt.Errorf("invalid port number: %s", parts[0])
+	}
+
+	if len(parts) == 1 {
+		return []uint16{uint16(start)}, nil
+	}
+
+	end, err := strconv.ParseUint(parts[1], 10, 16)
+	if err != nil {
+		return nil, fmt.Errorf("invalid port number: %s", parts[1])
+	}
+
+	if start > end {
+		return nil, fmt.Errorf("invalid port range: %d > %d", start, end)
+	}
+
+	var ports []uint16
+	for i := start; i <= end; i++ {
+		ports = append(ports, uint16(i))
+	}
+	return ports, nil
+}
+
+// ParseProtocols parses protocol string (e.g., "tcp,udp" or "6,17")
+func ParseProtocols(s string) ([]uint8, error) {
+	if s == "" {
+		return nil, nil
+	}
+
+	if strings.ToLower(s) == "all" {
+		return []uint8{0}, nil
+	}
+
+	var protocols []uint8
+	for _, p := range strings.Split(s, ",") {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if proto, ok := protocolNameMap[p]; ok {
+			protocols = append(protocols, proto)
+			continue
+		}
+		
+		num, err := strconv.ParseUint(p, 10, 8)
+		if err != nil {
+			return nil, fmt.Errorf("invalid protocol: %s", p)
+		}
+		protocols = append(protocols, uint8(num))
+	}
+	return protocols, nil
+}
+
+// ParseInterfaces parses interface string (e.g., "eth0,eth1")
+func ParseInterfaces(s string) []string {
+	if s == "" {
+		return nil
+	}
+	var ifaces []string
+	for _, iface := range strings.Split(s, ",") {
+		iface = strings.TrimSpace(iface)
+		if iface != "" {
+			ifaces = append(ifaces, iface)
+		}
+	}
+	return ifaces
 }
 
 // PktInfo represents a network packet information
@@ -90,10 +193,71 @@ func setupLogging(logDir string) (*os.File, error) {
 }
 
 func main() {
-	// Parse command line flags
+	// Parse command line arguments
 	debug := flag.Bool("debug", false, "enable debug logging")
 	logDir := flag.String("log-dir", "logs", "directory for log files")
+	
+	// Filter parameters
+	srcIP := flag.String("src-ip", "", "source IP address or CIDR")
+	dstIP := flag.String("dst-ip", "", "destination IP address or CIDR")
+	srcPort := flag.String("src-port", "", "source port or port range (e.g., 80 or 1000-2000)")
+	dstPort := flag.String("dst-port", "", "destination port or port range")
+	protocol := flag.String("protocol", "", "protocol (name or number, comma-separated)")
+	iface := flag.String("interface", "", "network interface name")
+
 	flag.Parse()
+
+	// Parse filter parameters
+	filter := &FilterConfig{}
+	var err error
+
+	// Parse IP filters
+	if *srcIP != "" {
+		_, filter.SrcIP, err = net.ParseCIDR(*srcIP)
+		if err != nil {
+			ip := net.ParseIP(*srcIP)
+			if ip == nil {
+				fmt.Printf("Invalid source IP or CIDR: %s\n", *srcIP)
+				os.Exit(1)
+			}
+			filter.SrcIP = &net.IPNet{IP: ip, Mask: net.CIDRMask(32, 32)}
+		}
+	}
+
+	if *dstIP != "" {
+		_, filter.DstIP, err = net.ParseCIDR(*dstIP)
+		if err != nil {
+			ip := net.ParseIP(*dstIP)
+			if ip == nil {
+				fmt.Printf("Invalid destination IP or CIDR: %s\n", *dstIP)
+				os.Exit(1)
+			}
+			filter.DstIP = &net.IPNet{IP: ip, Mask: net.CIDRMask(32, 32)}
+		}
+	}
+
+	// Parse port filters
+	filter.SrcPorts, err = ParsePortRange(*srcPort)
+	if err != nil {
+		fmt.Printf("Invalid source port range: %v\n", err)
+		os.Exit(1)
+	}
+
+	filter.DstPorts, err = ParsePortRange(*dstPort)
+	if err != nil {
+		fmt.Printf("Invalid destination port range: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Parse protocol filter
+	filter.Protocols, err = ParseProtocols(*protocol)
+	if err != nil {
+		fmt.Printf("Invalid protocol: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Parse interface filter
+	filter.Interfaces = ParseInterfaces(*iface)
 
 	// Set up logging to file
 	logFile, err := setupLogging(*logDir)
@@ -103,9 +267,31 @@ func main() {
 	}
 	defer logFile.Close()
 
-	// Set up logging
-	if *debug {
-		log.Printf("Debug logging enabled")
+	// Print startup message and filter configuration
+	log.Println("Network Debug Tool")
+	log.Println("Press Ctrl+C to exit")
+
+	if filter.SrcIP != nil {
+		log.Printf("Source IP filter: %s", filter.SrcIP)
+	}
+	if filter.DstIP != nil {
+		log.Printf("Destination IP filter: %s", filter.DstIP)
+	}
+	if len(filter.SrcPorts) > 0 {
+		log.Printf("Source port filter: %v", filter.SrcPorts)
+	}
+	if len(filter.DstPorts) > 0 {
+		log.Printf("Destination port filter: %v", filter.DstPorts)
+	}
+	if len(filter.Protocols) > 0 {
+		var protoNames []string
+		for _, p := range filter.Protocols {
+			protoNames = append(protoNames, parseProtocol(p))
+		}
+		log.Printf("Protocol filter: %v", protoNames)
+	}
+	if len(filter.Interfaces) > 0 {
+		log.Printf("Interface filter: %v", filter.Interfaces)
 	}
 
 	// Check if we're running on Linux
@@ -127,9 +313,133 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
-	// Print startup message
-	log.Println("Network Debug Tool")
-	log.Println("Press Ctrl+C to exit")
+	// Load pre-compiled BPF program
+	objs := bpf2go_bpf2go.Objects{}
+	if err := loadBpfObjects(&objs, nil); err != nil {
+		log.Printf("Error loading BPF objects: %v", err)
+		return
+	}
+	defer objs.Close()
+
+	// Set up perf buffer reader
+	rd, err := perf.NewReader(objs.Events, os.Getpagesize())
+	if err != nil {
+		log.Printf("Error creating perf event reader: %v", err)
+		return
+	}
+	defer rd.Close()
+
+	// Process events
+	go func() {
+		var event PktInfo
+		for {
+			record, err := rd.Read()
+			if err != nil {
+				if err == perf.ErrClosed {
+					return
+				}
+				log.Printf("Error reading perf event: %v", err)
+				continue
+			}
+
+			// Parse event data
+			if err := ebpf.Unmarshal(record.RawSample, &event); err != nil {
+				log.Printf("Error parsing event data: %v", err)
+				continue
+			}
+
+			// Apply filters
+			if filter.SrcIP != nil {
+				srcIP := net.IPv4(byte(event.SrcIP), byte(event.SrcIP>>8), byte(event.SrcIP>>16), byte(event.SrcIP>>24))
+				if !filter.SrcIP.Contains(srcIP) {
+					continue
+				}
+			}
+
+			if filter.DstIP != nil {
+				dstIP := net.IPv4(byte(event.DstIP), byte(event.DstIP>>8), byte(event.DstIP>>16), byte(event.DstIP>>24))
+				if !filter.DstIP.Contains(dstIP) {
+					continue
+				}
+			}
+
+			if len(filter.SrcPorts) > 0 {
+				match := false
+				for _, port := range filter.SrcPorts {
+					if event.SrcPort == port {
+						match = true
+						break
+					}
+				}
+				if !match {
+					continue
+				}
+			}
+
+			if len(filter.DstPorts) > 0 {
+				match := false
+				for _, port := range filter.DstPorts {
+					if event.DstPort == port {
+						match = true
+						break
+					}
+				}
+				if !match {
+					continue
+				}
+			}
+
+			if len(filter.Protocols) > 0 && filter.Protocols[0] != 0 {
+				match := false
+				for _, proto := range filter.Protocols {
+					if event.Protocol == proto {
+						match = true
+						break
+					}
+				}
+				if !match {
+					continue
+				}
+			}
+
+			if len(filter.Interfaces) > 0 {
+				ifname := string(event.IFName[:bytes.IndexByte(event.IFName[:], 0)])
+				match := false
+				for _, iface := range filter.Interfaces {
+					if ifname == iface {
+						match = true
+						break
+					}
+				}
+				if !match {
+					continue
+				}
+			}
+
+			// Format and log the event
+			srcIP := net.IPv4(byte(event.SrcIP), byte(event.SrcIP>>8), byte(event.SrcIP>>16), byte(event.SrcIP>>24))
+			dstIP := net.IPv4(byte(event.DstIP), byte(event.DstIP>>8), byte(event.DstIP>>16), byte(event.DstIP>>24))
+			
+			switch event.EventType {
+			case EvtNFHook:
+				log.Printf("[NFHook] %s:%d -> %s:%d Proto=%s Hook=%s Verdict=%d",
+					srcIP, event.SrcPort, dstIP, event.DstPort,
+					parseProtocol(event.Protocol), parseHook(event.Hook), event.Verdict)
+			case EvtXmit:
+				log.Printf("[Xmit] %s:%d -> %s:%d Proto=%s IFace=%s",
+					srcIP, event.SrcPort, dstIP, event.DstPort,
+					parseProtocol(event.Protocol), string(event.IFName[:bytes.IndexByte(event.IFName[:], 0)]))
+			case EvtDrop:
+				log.Printf("[Drop] %s:%d -> %s:%d Proto=%s Reason=%d",
+					srcIP, event.SrcPort, dstIP, event.DstPort,
+					parseProtocol(event.Protocol), event.DropReason)
+			case EvtRoute:
+				log.Printf("[Route] %s:%d -> %s:%d Proto=%s IFace=%s",
+					srcIP, event.SrcPort, dstIP, event.DstPort,
+					parseProtocol(event.Protocol), string(event.IFName[:bytes.IndexByte(event.IFName[:], 0)]))
+			}
+		}
+	}()
 
 	// Write PID file
 	pidFile := filepath.Join(*logDir, "network-debug.pid")
