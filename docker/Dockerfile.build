@@ -74,14 +74,14 @@ ENV CC=/usr/bin/clang \
 # 设置 BPF 头文件环境
 RUN mkdir -p /usr/include/bpf && \
     # 确保系统头文件路径正确
+    rm -f /usr/include/asm && \
     ln -sf /usr/include/x86_64-linux-gnu/asm /usr/include/asm && \
-    # 确保 BPF 头文件可用
-    ln -sf /usr/include/linux/bpf.h /usr/include/bpf/bpf.h && \
-    ln -sf /usr/include/linux/bpf_common.h /usr/include/bpf/bpf_common.h && \
-    # 复制必要的 BPF 头文件
-    cp -r /usr/include/linux/types.h /usr/include/bpf/ && \
-    cp -r /usr/include/linux/bpf.h /usr/include/bpf/ && \
-    cp -r /usr/include/linux/bpf_common.h /usr/include/bpf/ && \
+    # 备份并准备 BPF 头文件目录
+    rm -rf /usr/include/bpf/* && \
+    # 复制和链接必要的 BPF 头文件
+    cp -f /usr/include/linux/bpf.h /usr/include/bpf/ && \
+    cp -f /usr/include/linux/bpf_common.h /usr/include/bpf/ && \
+    cp -f /usr/include/linux/types.h /usr/include/bpf/ && \
     # 创建 BPF helper 头文件链接
     ln -sf /usr/include/bpf/bpf_helper_defs.h /usr/include/bpf/bpf_helpers.h
 
