@@ -19,6 +19,7 @@ RUN apt-get update && \
         zlib1g-dev \
         libelf-dev \
         libbpf-dev \
+        libc6-dev \
         curl \
         gnupg2 \
         lsb-release \
