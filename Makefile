@@ -1,6 +1,7 @@
 VERSION := 1.0.0
 TARGET := net-tracer
 BUILD_DIR := build
+OUTPUT_DIR ?= $(BUILD_DIR)
 
 # Docker parameters
 DOCKER_IMAGE := golang:1.22-bullseye
@@ -36,13 +37,15 @@ docker-image:
 docker-build: docker-image
 	docker run --rm -v $(PWD):$(DOCKER_WORKDIR) \
 		$(DOCKER_BUILD_IMAGE) \
-		make build-in-docker
+		make build-in-docker OUTPUT_DIR=$(OUTPUT_DIR)
 
 # Docker 内部构建命令
 .PHONY: build-in-docker
 build-in-docker: generate
-	mkdir -p $(BUILD_DIR)
-	$(GOFLAGS) $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(TARGET)
+	mkdir -p $(OUTPUT_DIR)
+	$(GOFLAGS) $(GOBUILD) $(LDFLAGS) -o $(OUTPUT_DIR)/$(TARGET)
+	cp bpf_bpfel.o $(OUTPUT_DIR)/
+	@echo "Build artifacts have been placed in $(OUTPUT_DIR)"
 
 .PHONY: generate
 generate: export BPF_CLANG := $(CLANG)
@@ -64,10 +67,10 @@ deps:
 # 创建发布包
 .PHONY: release
 release: docker-build
-	mkdir -p $(BUILD_DIR)/$(TARGET)-$(VERSION)
-	cp $(BUILD_DIR)/$(TARGET) $(BUILD_DIR)/$(TARGET)-$(VERSION)/
-	cp README.md $(BUILD_DIR)/$(TARGET)-$(VERSION)/
-	cd $(BUILD_DIR) && tar czf $(TARGET)-$(VERSION)-$(ARCH).tar.gz $(TARGET)-$(VERSION)
+	mkdir -p $(OUTPUT_DIR)/$(TARGET)-$(VERSION)
+	cp $(OUTPUT_DIR)/$(TARGET) $(OUTPUT_DIR)/$(TARGET)-$(VERSION)/
+	cp README.md $(OUTPUT_DIR)/$(TARGET)-$(VERSION)/
+	cd $(OUTPUT_DIR) && tar czf $(TARGET)-$(VERSION)-$(ARCH).tar.gz $(TARGET)-$(VERSION)
 
 # 打印版本信息
 .PHONY: version

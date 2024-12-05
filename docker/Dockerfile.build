@@ -1,63 +1,34 @@
+# 编译环境
 FROM openanolis/anolisos:7.9-x86_64
 
-# 更新包管理器并安装基础工具
+# 安装基础工具和编译器
 RUN yum update -y && \
-    yum install -y yum-utils && \
-    yum install -y epel-release && \
-    yum install -y gcc gcc-c++ && \
-    yum groupinstall -y "Development Tools" && \
+    yum install -y yum-utils epel-release && \
     yum install -y \
+        gcc \
+        gcc-c++ \
         wget \
-        which \
         git \
         make \
-        glibc-devel \
-        kernel-devel \
-        elfutils-libelf-devel \
-        pkgconfig \
-        cmake3 \
         ninja-build \
+        cmake3 \
         python3 \
         python3-pip \
         zlib-devel \
         libffi-devel \
         ncurses-devel \
         xz-devel \
-        texinfo
-
-# 从源码编译安装 GCC 9
-RUN cd /tmp && \
-    wget https://ftp.gnu.org/gnu/gcc/gcc-9.5.0/gcc-9.5.0.tar.gz && \
-    tar xf gcc-9.5.0.tar.gz && \
-    cd gcc-9.5.0 && \
-    ./contrib/download_prerequisites && \
-    mkdir build && cd build && \
-    ../configure --disable-multilib --enable-languages=c,c++ --prefix=/usr/local/gcc-9.5.0 && \
-    make -j$(nproc) && \
-    make install
-
-# 配置新版本 GCC
-RUN cd / && \
-    rm -rf /tmp/gcc-9.5.0* && \
-    ln -sf /usr/local/gcc-9.5.0/bin/gcc /usr/bin/gcc && \
-    ln -sf /usr/local/gcc-9.5.0/bin/g++ /usr/bin/g++ && \
-    echo "/usr/local/gcc-9.5.0/lib64" > /etc/ld.so.conf.d/gcc-9.5.0.conf && \
-    ldconfig && \
-    gcc --version
-
-# 验证 GCC 版本
-RUN gcc --version | grep -q "9.5.0" || exit 1
+        kernel-devel \
+        elfutils-libelf-devel \
+        glibc-devel
 
 # 编译安装 LLVM/Clang
 ENV LLVM_VERSION=14.0.6
-ENV CC=/usr/local/gcc-9.5.0/bin/gcc
-ENV CXX=/usr/local/gcc-9.5.0/bin/g++
 RUN cd /tmp && \
     wget https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/llvm-project-${LLVM_VERSION}.src.tar.xz && \
     tar xf llvm-project-${LLVM_VERSION}.src.tar.xz && \
     mkdir -p llvm-project-${LLVM_VERSION}.src/build && \
     cd llvm-project-${LLVM_VERSION}.src/build && \
-    CC=/usr/local/gcc-9.5.0/bin/gcc CXX=/usr/local/gcc-9.5.0/bin/g++ \
     cmake3 -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DLLVM_ENABLE_PROJECTS="clang;lld" \
@@ -68,23 +39,30 @@ RUN cd /tmp && \
         -DLLVM_ENABLE_ASSERTIONS=ON \
         -DLLVM_ENABLE_RTTI=ON \
         -DLLVM_ENABLE_ZLIB=ON \
-        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/llvm \
         ../llvm && \
     ninja -j$(nproc) && \
     ninja install && \
     cd / && \
-    rm -rf /tmp/llvm-project-${LLVM_VERSION}.src* && \
-    ln -sf /usr/bin/clang /usr/bin/clang-14 && \
-    ln -sf /usr/bin/llvm-strip /usr/bin/llvm-strip-14 && \
-    clang --version
+    rm -rf /tmp/llvm-project-${LLVM_VERSION}.src*
 
-# 设置工作目录
-WORKDIR /workspace
+# 创建必要的符号链接
+RUN ln -sf /usr/local/llvm/bin/clang /usr/bin/clang && \
+    ln -sf /usr/local/llvm/bin/llvm-strip /usr/bin/llvm-strip && \
+    ln -sf /usr/local/llvm/bin/clang /usr/bin/clang-14 && \
+    ln -sf /usr/local/llvm/bin/llvm-strip /usr/bin/llvm-strip-14 && \
+    echo "/usr/local/llvm/lib" > /etc/ld.so.conf.d/llvm.conf && \
+    ldconfig
 
 # 下载并安装 Go
 RUN wget https://mirrors.aliyun.com/golang/go1.22.0.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz && \
     rm go1.22.0.linux-amd64.tar.gz
+
+# 设置工作目录和输出目录
+WORKDIR /workspace
+ENV OUTPUT_DIR=/workspace/output
+RUN mkdir -p ${OUTPUT_DIR}
 
 # 设置 Go 环境变量
 ENV GOROOT="/usr/local/go"
@@ -99,7 +77,7 @@ ENV GOPATH="/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
 # 设置编译器和 BPF 环境变量
-ENV PATH="/usr/local/gcc-9.5.0/bin:/usr/bin:/usr/local/bin:${PATH}" \
+ENV PATH="/usr/local/llvm/bin:${PATH}" \
     CC=/usr/bin/clang \
     BPF_CLANG=/usr/bin/clang \
     BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/bpf -I/usr/include -I/usr/include/asm -I/usr/include/clang/14/include" \
@@ -109,7 +87,7 @@ ENV PATH="/usr/local/gcc-9.5.0/bin:/usr/bin:/usr/local/bin:${PATH}" \
 RUN mkdir -p /usr/include/bpf && \
     cp -r /usr/include/linux /usr/include/bpf/ && \
     cp -r /usr/include/asm /usr/include/bpf/ && \
-    cp -r /usr/include/asm-generic /usr/include/bpf/ && \
-    yum clean all
+    cp -r /usr/include/asm-generic /usr/include/bpf/
 
-CMD ["make", "build-in-docker"]
+# 设置默认的构建命令，确保输出到指定目录
+CMD ["make", "build-in-docker", "OUTPUT_DIR=/workspace/output"]

@@ -19,12 +19,17 @@ jobs:
       run: docker build -t net-tracer-builder -f docker/Dockerfile.build .
 
     - name: Build project
-      run: docker run --rm -v ${{ github.workspace }}:/workspace net-tracer-builder make build-in-docker
+      run: |
+        mkdir -p output
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -v ${{ github.workspace }}/output:/workspace/output \
+          net-tracer-builder
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: net-tracer
+        name: net-tracer-binaries
         path: |
-          build/net-tracer
-          *.o
+          output/**/*
+        if-no-files-found: error
