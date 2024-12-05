@@ -3,6 +3,7 @@ package main
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang bpf ./bpf/tracer.c -- -I./bpf -D__TARGET_ARCH_x86
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -341,7 +342,7 @@ func main() {
 			}
 
 			// Parse event data
-			if err := ebpf.Unmarshal(record.RawSample, &event); err != nil {
+			if err := binary.Read(bytes.NewReader(record.RawSample), binary.LittleEndian, &event); err != nil {
 				log.Printf("Error parsing event data: %v", err)
 				continue
 			}
