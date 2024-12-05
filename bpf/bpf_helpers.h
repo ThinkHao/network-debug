@@ -1,12 +1,10 @@
 #ifndef __BPF_HELPERS_H__
 #define __BPF_HELPERS_H__
 
-#include "linux/bpf.h"
-#include "bpf/libbpf.h"
-#include "bpf/bpf_endian.h"
-#include "bpf/bpf_tracing.h"
+#include <linux/bpf.h>
+#include <linux/types.h>
 
-/* Additional helper macros not defined in system headers */
+/* Additional helper macros */
 #ifndef SEC
 #define SEC(name) __attribute__((section(name), used))
 #endif
