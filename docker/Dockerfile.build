@@ -68,7 +68,7 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 # 设置编译器和 BPF 环境变量
 ENV CC=/usr/bin/clang \
     BPF_CLANG=/usr/bin/clang \
-    BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/linux -I/usr/include/bpf -I/usr/lib/llvm-14/lib/clang/14.0.6/include" \
+    BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/workspace/bpf -I/usr/include/x86_64-linux-gnu -I/usr/include -I/usr/include/linux -I/usr/include/bpf -I/usr/lib/llvm-14/lib/clang/14.0.6/include" \
     GOPROXY=https://goproxy.cn,direct
 
 # 设置 BPF 头文件环境
@@ -76,14 +76,21 @@ RUN mkdir -p /usr/include/bpf && \
     # 确保系统头文件路径正确
     rm -f /usr/include/asm && \
     ln -sf /usr/include/x86_64-linux-gnu/asm /usr/include/asm && \
-    # 备份并准备 BPF 头文件目录
+    # 准备 BPF 头文件目录
     rm -rf /usr/include/bpf/* && \
-    # 复制和链接必要的 BPF 头文件
+    # 复制系统 BPF 头文件到工作目录
     cp -f /usr/include/linux/bpf.h /usr/include/bpf/ && \
     cp -f /usr/include/linux/bpf_common.h /usr/include/bpf/ && \
     cp -f /usr/include/linux/types.h /usr/include/bpf/ && \
-    # 创建 BPF helper 头文件链接
-    ln -sf /usr/include/bpf/bpf_helper_defs.h /usr/include/bpf/bpf_helpers.h
+    # 安装 libbpf 开发包
+    apt-get update && \
+    apt-get install -y --no-install-recommends libbpf-dev && \
+    # 创建必要的符号链接
+    ln -sf /usr/include/bpf/libbpf.h /usr/include/bpf/bpf_helpers.h && \
+    ln -sf /usr/include/bpf/libbpf.h /usr/include/bpf/bpf_helper_defs.h && \
+    # 清理
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # 设置默认的构建命令，确保输出到指定目录
 CMD ["make", "build-in-docker", "OUTPUT_DIR=/workspace/output"]
