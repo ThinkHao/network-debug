@@ -83,6 +83,8 @@ RUN apt-get update && \
     # 复制所有必要的头文件
     cp -f /usr/include/linux/bpf*.h /usr/include/bpf/ && \
     cp -f /usr/include/linux/types.h /usr/include/bpf/ && \
+    # 创建 bpf_endian.h
+    echo '#ifndef __BPF_ENDIAN_H\n#define __BPF_ENDIAN_H\n\n#include <linux/byteorder/little_endian.h>\n\n#define __bpf_htonll(x) __cpu_to_be64(x)\n#define __bpf_ntohll(x) __be64_to_cpu(x)\n#define __bpf_htonl(x) __cpu_to_be32(x)\n#define __bpf_ntohl(x) __be32_to_cpu(x)\n#define __bpf_htons(x) __cpu_to_be16(x)\n#define __bpf_ntohs(x) __be16_to_cpu(x)\n\n#endif' > /usr/include/bpf/bpf_endian.h && \
     # 创建所需的符号链接
     ln -sf /usr/include/bpf.h /usr/include/bpf/bpf.h && \
     ln -sf /usr/include/linux/bpf.h /usr/include/bpf/bpf_helpers.h && \

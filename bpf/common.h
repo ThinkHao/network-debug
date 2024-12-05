@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include <linux/types.h>
 #include <linux/bpf.h>
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_endian.h>
+#include "bpf_helpers.h"
+#include <linux/byteorder/little_endian.h>
 #include <stdint.h>
 
 /* Event types */
