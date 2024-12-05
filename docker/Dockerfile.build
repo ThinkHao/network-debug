@@ -20,6 +20,8 @@ RUN apt-get update && \
         libelf-dev \
         libbpf-dev \
         libc6-dev \
+        linux-libc-dev \
+        gcc-multilib \
         curl \
         gnupg2 \
         lsb-release \
@@ -66,7 +68,7 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 # 设置编译器和 BPF 环境变量
 ENV CC=/usr/bin/clang \
     BPF_CLANG=/usr/bin/clang \
-    BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/bpf -I/usr/include -I/usr/include/asm -I/usr/include/clang/14/include" \
+    BPF_CFLAGS="-O2 -g -target bpf -D__TARGET_ARCH_x86 -I/usr/include/bpf -I/usr/include -I/usr/include/x86_64-linux-gnu -I/usr/lib/llvm-14/lib/clang/14.0.6/include" \
     GOPROXY=https://goproxy.cn,direct
 
 # 安装 bpf 相关头文件
