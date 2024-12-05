@@ -72,7 +72,8 @@ ENV CC=/usr/bin/clang \
 RUN mkdir -p /usr/include/bpf && \
     cp -r /usr/include/linux /usr/include/bpf/ && \
     cp -r /usr/include/x86_64-linux-gnu/asm /usr/include/bpf/ && \
-    cp -r /usr/include/asm-generic /usr/include/bpf/
+    cp -r /usr/include/asm-generic /usr/include/bpf/ && \
+    ln -sf /usr/include/x86_64-linux-gnu/asm /usr/include/asm
 
 # 设置默认的构建命令，确保输出到指定目录
 CMD ["make", "build-in-docker", "OUTPUT_DIR=/workspace/output"]
